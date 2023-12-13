@@ -1,5 +1,6 @@
 # Frontend Masters Transcriptions & Descriptions Generator
-## Using [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) and [C2Translate2](https://github.com/OpenNMT/CTranslate2/)
+
+### Utilizing [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) and [C2Translate2](https://github.com/OpenNMT/CTranslate2/)
 
 ## Setup Instructions
 * Clone down this repo
@@ -13,7 +14,7 @@
 * Create a .env file in the root that contains your OpenAI API Key `OPENAI_API_KEY=yourkeyhere`
 
 * Run application using `python app.py`
-** this might also be `python3 app.py` depending on the install
+* this might also be `python3 app.py` depending on the install
 
 ### GPU
 
