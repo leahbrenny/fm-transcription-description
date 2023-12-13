@@ -1,5 +1,11 @@
-av==10.*
-ctranslate2>=3.17,<4
-huggingface_hub>=0.13
-tokenizers>=0.13,<0.15
-onnxruntime>=1.14,<2
+av==10.0.0
+ctranslate2==3.20.0
+faster-whisper==0.9.0
+Flask==3.0.0
+huggingface-hub==0.17.3
+onnxruntime==1.16.1
+openai==0.27.0
+python-dotenv==0.19.1
+tiktoken==0.3.3
+tokenizers==0.14.1
+torch==2.0.1
