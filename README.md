@@ -3,7 +3,6 @@
 ### Utilizing [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) and [C2Translate2](https://github.com/OpenNMT/CTranslate2/)
 
 ## Setup Instructions
-* Clone down this repo
 
 * Make sure you have [Python](https://www.python.org/downloads/) installed (at least version 3)
 
