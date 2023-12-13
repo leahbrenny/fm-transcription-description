@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>FM Transcriptions & Descriptions</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <script
+      type="text/javascript"
+      src="{{ url_for('static', filename='script.js') }}"
+    ></script>
+  </head>
+  <body>
+    <div class="upperBoxes">
+      <div id="stepOne">
+        <h2>1 - Generate Transcripts</h2>
+        <form
+          action="/transcribe"
+          method="POST"
+          enctype="multipart/form-data"
+          id="transcription"
+        >
+          <h3 id="stepOneDescription" class="step-description">
+            To begin, choose a local video file to generate transcripts:
+          </h3>
+          <h3 id="fileHeader">File Name</h3>
+          <div id="nameDisplay" class="file-names-column"></div>
+          <div class="buttons-row">
+            <input
+              type="file"
+              id="fileInput"
+              name="audio_files"
+              multiple
+              accept=".mp3, .mp4"
+            />
+            <label
+              for="fileInput"
+              class="custom-file-input-label"
+              id="fileLabel"
+            >
+              Choose File
+            </label>
+
+            <h3 id="orText">- or -</h3>
+
+            <!-- Add new input for choosing a folder -->
+            <input
+              type="file"
+              id="folderInput"
+              name="audio_folder"
+              webkitdirectory
+              directory
+              multiple
+            />
+            <label
+              for="folderInput"
+              class="custom-file-input-label"
+              id="folderLabel"
+            >
+              Choose Folder
+            </label>
+            <button type="submit" id="downloadButton">Download</button>
+            <button type="button" id="resetButton">Reset</button>
+          </div>
+          <!-- Added download and reset buttons with IDs -->
+        </form>
+      </div>
+      <div id="stepTwo">
+        <h2>2 - Generate Descriptions</h2>
+        <form id="description" action="/generate_descriptions" method="POST">
+          <div>
+            <h3 class="waiting">Waiting on Step 1...</h3>
+            <button id="generateButton" type="submit" >Generate</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="lowerBoxes">
+      <div id="stepThree">
+        <h2>3 - Append to Lesson Sheet</h2>
+        <form></form>
+      </div>
+    </div>
+  </body>
+</html>
