@@ -7,14 +7,13 @@
 
 * Make sure you have [Python](https://www.python.org/downloads/) installed (at least version 3)
 
-* Install the repo dependencies `pip install -r requirements.txt`
+* Install the repo dependencies ```pip install -r requirements.txt```
 
 * Create an [OpenAI account](https://platform.openai.com/signup) or [sign in](https://platform.openai.com/login). Next, navigate to the [API key page](https://platform.openai.com/account/api-keys) and "Create new secret key".
 
-* Create a .env file in the root that contains your OpenAI API Key `OPENAI_API_KEY=yourkeyhere`
+* Create a .env file in the root that contains your OpenAI API Key ```OPENAI_API_KEY=yourkeyhere```
 
-* Run application using `python app.py`
-* this might also be `python3 app.py` depending on the install
+* Run application using ```python app.py```
 
 ### GPU
 
