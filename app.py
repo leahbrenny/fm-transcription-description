@@ -102,7 +102,7 @@ def transcribe_audio():
                     progress_percentage = (segment.end / total_duration) * 100
                     print(f"Transcription progress: {progress_percentage:.2f}%")
 
-                    transcription_text += f"00:{format_timestamp(segment.start)} --> 00:{format_timestamp(segment.end)}\n {segment.text}\n"
+                    transcription_text += f"{format_timestamp(segment.start)} --> {format_timestamp(segment.end)}\n {segment.text}\n"
 
                 transcription_results.append((audio_file.filename, transcription_text))
 
