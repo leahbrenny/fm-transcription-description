@@ -125,12 +125,14 @@ def transcribe_audio():
                 lines = transcription_text.strip().split("\n")
                 vtt_file.write("WEBVTT\n\n")
 
+                line_number = 1
+
                 for i, line in enumerate(lines):
                     if i % 2 == 0:  # Timestamp lines
-                        vtt_file.write(f"{line.strip()}\n")  # Write the timestamp without adding an empty line
+                        vtt_file.write(f"{line_number}\n{line.strip()}\n")  # Write line number and timestamp
+                        line_number += 1
                     else:  # Text lines
                         vtt_file.write(f"{line.strip()}\n\n")  # Add an empty line only after the text
-
 
             txt_file_paths.append(txt_file_path)
             vtt_file_paths.append(vtt_file_path)
