@@ -6,6 +6,7 @@ import re
 import shutil
 import zipfile  # Import the zipfile module
 from faster_whisper import WhisperModel
+from faster_whisper.utils import format_timestamp
 
 app = Flask(__name__)
 
@@ -14,18 +15,21 @@ transcription_results = []
 txt_file_paths = []  # Initialize the list for text file paths
 
 # Create the 'temp' directory if it doesn't exist
-if not os.path.exists('temp'):
-    os.makedirs('temp')
+if not os.path.exists("temp"):
+    os.makedirs("temp")
 
-@app.route('/')
+
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
+
 
 # ...
 
-@app.route('/transcribe', methods=['POST'])
+
+@app.route("/transcribe", methods=["POST"])
 def transcribe_audio():
-    audio_files = request.files.getlist('audio_files')
+    audio_files = request.files.getlist("audio_files")
 
     if not audio_files:
         return "No files provided."
@@ -46,7 +50,7 @@ def transcribe_audio():
             model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
         # Clear the 'temp' directory if it contains any files
-        temp_directory = 'temp'
+        temp_directory = "temp"
         for filename in os.listdir(temp_directory):
             file_path = os.path.join(temp_directory, filename)
             try:
@@ -59,7 +63,7 @@ def transcribe_audio():
 
         # Remove previously generated .zip file
         for filename in os.listdir(os.getcwd()):
-            if filename.endswith('.zip'):
+            if filename.endswith(".zip"):
                 os.unlink(filename)
 
         transcription_results = []  # Store transcription results
@@ -69,27 +73,36 @@ def transcribe_audio():
             # Determine the file extension
             file_extension = os.path.splitext(audio_file.filename)[1].lower()
 
-            if file_extension in ('.mp3', '.mp4'):
+            if file_extension in (".mp3", ".mp4"):
                 # Save the uploaded file to a temporary location
                 audio_file_path = os.path.join("temp", audio_file.filename)
                 audio_file.save(audio_file_path)
 
                 segments, info = model.transcribe(audio_file_path, beam_size=5)
 
-                print(f"Detected language '{info.language}' with probability {info.language_probability}")
+                print(
+                    f"Detected language '{info.language}' with probability {info.language_probability}"
+                )
 
                 transcription_text = ""
 
                 total_duration = info.duration  # Total duration of the audio file
 
                 for segment in segments:
-                    print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+                    print(
+                        f"00:{format_timestamp(segment.start)} --> 00:{format_timestamp(segment.end)} {segment.text}"
+                    )
+
+                    # print(
+                    #     "[%.2fs -> %.2fs] %s"
+                    #     % (segment.start, segment.end, segment.text)
+                    # )
 
                     # Calculate progress percentage based on segment.end compared to total duration
                     progress_percentage = (segment.end / total_duration) * 100
                     print(f"Transcription progress: {progress_percentage:.2f}%")
 
-                    transcription_text += f"[{segment.start:.2f}s -> {segment.end:.2f}s] {segment.text}\n"
+                    transcription_text += f"00:{format_timestamp(segment.start)} --> 00:{format_timestamp(segment.end)}\n {segment.text}\n"
 
                 transcription_results.append((audio_file.filename, transcription_text))
 
@@ -103,39 +116,31 @@ def transcribe_audio():
         vtt_file_paths = []
 
         for filename, transcription_text in transcription_results:
-            txt_file_path = os.path.join('temp', f'{os.path.splitext(filename)[0]}.txt')
-            vtt_file_path = os.path.join('temp', f'{os.path.splitext(filename)[0]}.vtt')
+            txt_file_path = os.path.join("temp", f"{os.path.splitext(filename)[0]}.txt")
+            vtt_file_path = os.path.join("temp", f"{os.path.splitext(filename)[0]}.vtt")
 
-            with open(txt_file_path, 'w') as text_file, open(vtt_file_path, 'w') as vtt_file:
-                lines = transcription_text.strip().split('\n')
+            with open(txt_file_path, "w") as text_file, open(
+                vtt_file_path, "w"
+            ) as vtt_file:
+                lines = transcription_text.strip().split("\n")
                 vtt_file.write("WEBVTT\n\n")
 
-                i = 1  # Initialize line number
-                for line in lines:
-                    timestamp_start = f"{i * 3:02d}.100"
-                    timestamp_end = f"{(i + 1) * 3:02d}.830"
+                for i, line in enumerate(lines):
+                    if i % 2 == 0:  # Timestamp lines
+                        vtt_file.write(f"{i // 2 + 1}\n")  # Increment line number only for timestamp lines
+                    vtt_file.write(f"{line.strip()}\n")
 
-                    if i == 1:
-                        text_file.write(f">> {line}\n")
-                    else:
-                        text_file.write(f"{line}\n")
-
-                    vtt_file.write(f"{i}\n")
-                    vtt_file.write(f"00:00:{timestamp_start} --> 00:00:{timestamp_end}\n")
-                    vtt_file.write(re.sub(r'\[\d+\.\d+s -> \d+\.\d+s\] ', '', line) + "\n\n")
-                    
-                    i += 1  # Increment line number
 
             txt_file_paths.append(txt_file_path)
             vtt_file_paths.append(vtt_file_path)
 
         # Generate a single .zip file containing both .txt and .vtt files
         if len(txt_file_paths) > 0:
-            zip_filename = 'transcriptions.zip'
-            with zipfile.ZipFile(zip_filename, 'w') as zipf:
+            zip_filename = "transcriptions.zip"
+            with zipfile.ZipFile(zip_filename, "w") as zipf:
                 for txt_file_path in txt_file_paths:
                     zipf.write(txt_file_path, os.path.basename(txt_file_path))
-                    vtt_file_path = txt_file_path.replace('.txt', '.vtt')
+                    vtt_file_path = txt_file_path.replace(".txt", ".vtt")
                     if os.path.exists(vtt_file_path):
                         zipf.write(vtt_file_path, os.path.basename(vtt_file_path))
 
@@ -150,9 +155,11 @@ def transcribe_audio():
         # Handle exceptions here
         return "An error occurred during transcription: " + str(e)
 
+
 # ...
 
-@app.route('/generate_descriptions', methods=['POST'])
+
+@app.route("/generate_descriptions", methods=["POST"])
 def generate_descriptions():
     try:
         # Load environment variables from .env
@@ -161,7 +168,7 @@ def generate_descriptions():
         # Set OpenAI API key
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
-        temp_directory = 'temp'
+        temp_directory = "temp"
         response_descriptions = []
 
         for filename in os.listdir(temp_directory):
@@ -170,11 +177,13 @@ def generate_descriptions():
                 file_name_without_extension = os.path.splitext(filename)[0]
 
                 txt_file_path = os.path.join(temp_directory, filename)
-                with open(txt_file_path, 'r') as text_file:
+                with open(txt_file_path, "r") as text_file:
                     transcription_text = text_file.read()
 
                 # Use regular expressions to extract the text within square brackets
-                timestamps_removed = re.sub(r'\[\d+\.\d+s -> \d+\.\d+s\] ', '', transcription_text)
+                timestamps_removed = re.sub(
+                    r"\[\d+\.\d+s -> \d+\.\d+s\] ", "", transcription_text
+                )
 
                 # Combine the entire text into a single message
                 response = openai.ChatCompletion.create(
@@ -182,34 +191,38 @@ def generate_descriptions():
                     messages=[
                         {
                             "role": "system",
-                            "content": "Provide a 2 to 3 sentence description of what happens in the lesson you are provided"
+                            "content": "Provide a 2 to 3 sentence description of what happens in the lesson you are provided",
                         },
-                        {
-                            "role": "user",
-                            "content": timestamps_removed
-                        }
+                        {"role": "user", "content": timestamps_removed},
                     ],
                     temperature=0,
                     max_tokens=1024,
                     top_p=1,
                     frequency_penalty=0,
-                    presence_penalty=0
+                    presence_penalty=0,
                 )
 
                 # Get the generated description from the API response and replace '\t' with '&nbsp;'
-                description = response.choices[0].message["content"].replace('\t', '&nbsp;')
+                description = (
+                    response.choices[0].message["content"].replace("\t", "&nbsp;")
+                )
 
                 # Append the "lesson_name\tlesson_description" to the response_descriptions list
-                response_descriptions.append(f"{file_name_without_extension}\\t{description}")
+                response_descriptions.append(
+                    f"{file_name_without_extension}\\t{description}"
+                )
 
         # Join the descriptions into a single string with HTML non-breaking spaces and return it
         return "<br>".join(response_descriptions)
 
     except Exception as e:
         # Handle exceptions here
-        return jsonify({"error": "An error occurred during description generation: " + str(e)})
+        return jsonify(
+            {"error": "An error occurred during description generation: " + str(e)}
+        )
+
 
 # ...
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
