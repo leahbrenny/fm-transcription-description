@@ -80,29 +80,29 @@ def transcribe_audio():
 
                 segments, info = model.transcribe(audio_file_path, beam_size=5)
 
-                print(
-                    f"Detected language '{info.language}' with probability {info.language_probability}"
-                )
-
                 transcription_text = ""
 
                 total_duration = info.duration  # Total duration of the audio file
 
                 for segment in segments:
-                    print(
-                        f"00:{format_timestamp(segment.start)} --> 00:{format_timestamp(segment.end)} {segment.text}"
-                    )
+                    start_time = None
+                    end_time = None
 
-                    # print(
-                    #     "[%.2fs -> %.2fs] %s"
-                    #     % (segment.start, segment.end, segment.text)
-                    # )
+                    for word in segment.words:
+                        # Update start_time with the start time of the first word
+                        if start_time is None:
+                            start_time = word.start
 
-                    # Calculate progress percentage based on segment.end compared to total duration
-                    progress_percentage = (segment.end / total_duration) * 100
+                        # Update end_time with the end time of the current word
+                        end_time = word.end
+
+                    # Calculate progress percentage based on end_time compared to total duration
+                    progress_percentage = (end_time / total_duration) * 100
                     print(f"Transcription progress: {progress_percentage:.2f}%")
 
-                    transcription_text += f"{format_timestamp(segment.start)} --> {format_timestamp(segment.end)}\n {segment.text}\n"
+                    # Update transcription_text to use start_time and end_time
+                    transcription_text += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n {segment.text}\n"
+
 
                 transcription_results.append((audio_file.filename, transcription_text))
 
@@ -129,10 +129,14 @@ def transcribe_audio():
 
                 for i, line in enumerate(lines):
                     if i % 2 == 0:  # Timestamp lines
-                        vtt_file.write(f"{line_number}\n{line.strip()}\n")  # Write line number and timestamp
+                        vtt_file.write(
+                            f"{line_number}\n{line.strip()}\n"
+                        )  # Write line number and timestamp
                         line_number += 1
                     else:  # Text lines
-                        vtt_file.write(f"{line.strip()}\n\n")  # Add an empty line only after the text
+                        vtt_file.write(
+                            f"{line.strip()}\n\n"
+                        )  # Add an empty line only after the text
 
             txt_file_paths.append(txt_file_path)
             vtt_file_paths.append(vtt_file_path)
