@@ -127,8 +127,9 @@ def transcribe_audio():
 
                 for i, line in enumerate(lines):
                     if i % 2 == 0:  # Timestamp lines
-                        vtt_file.write(f"{i // 2 + 1}\n")  # Increment line number only for timestamp lines
-                    vtt_file.write(f"{line.strip()}\n")
+                        vtt_file.write(f"{line.strip()}\n")  # Write the timestamp without adding an empty line
+                    else:  # Text lines
+                        vtt_file.write(f"{line.strip()}\n\n")  # Add an empty line only after the text
 
 
             txt_file_paths.append(txt_file_path)
