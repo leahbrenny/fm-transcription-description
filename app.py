@@ -28,6 +28,7 @@ def index():
 
 
 @app.route("/transcribe", methods=["POST"])
+
 def transcribe_audio():
     audio_files = request.files.getlist("audio_files")
 
@@ -68,6 +69,8 @@ def transcribe_audio():
 
         transcription_results = []  # Store transcription results
         txt_file_paths = []
+        vtt_results = []  # Store vtt results
+        vtt_file_paths = []
 
         for audio_file in audio_files:
             # Determine the file extension
@@ -81,6 +84,7 @@ def transcribe_audio():
                 segments, info = model.transcribe(audio_file_path, beam_size=5)
 
                 transcription_text = ""
+                vtt_text = ""
 
                 total_duration = info.duration  # Total duration of the audio file
 
@@ -102,18 +106,26 @@ def transcribe_audio():
 
                     # Update transcription_text to use start_time and end_time
                     transcription_text += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n {segment.text}\n"
-
+                    # Update vtt_text to use start_time and end_time
+                    vtt_text += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n {segment.text}\n"
 
                 transcription_results.append((audio_file.filename, transcription_text))
+                vtt_results.append((audio_file.filename, vtt_text))
 
                 # Remove the temporary audio file
                 os.remove(audio_file_path)
+
             else:
                 return f"Invalid file type: {audio_file.filename}. Supported types: .mp3 and .mp4"
 
         # Create and save .txt and .vtt files
         txt_file_paths = []
         vtt_file_paths = []
+
+        def format_timestamp_to_txt(timestamp_str):
+            # Assuming input timestamp_str is in the format HH:MM:SS.sss
+            hours, minutes, seconds = map(float, timestamp_str.split(":"))
+            return f"[{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}]"
 
         for filename, transcription_text in transcription_results:
             txt_file_path = os.path.join("temp", f"{os.path.splitext(filename)[0]}.txt")
@@ -122,21 +134,22 @@ def transcribe_audio():
             with open(txt_file_path, "w") as text_file, open(
                 vtt_file_path, "w"
             ) as vtt_file:
+
                 lines = transcription_text.strip().split("\n")
-                vtt_file.write("WEBVTT\n\n")
 
-                line_number = 1
+                for i in range(0, len(lines), 2):  # Iterate over every 2 lines
+                    start_time_str, end_time_str = lines[i].strip().split(" --> ")
+                    start_time_vtt = format_timestamp(start_time_str)  # Use the correct function
 
-                for i, line in enumerate(lines):
-                    if i % 2 == 0:  # Timestamp lines
-                        vtt_file.write(
-                            f"{line_number}\n{line.strip()}\n"
-                        )  # Write line number and timestamp
-                        line_number += 1
-                    else:  # Text lines
-                        vtt_file.write(
-                            f"{line.strip()}\n\n"
-                        )  # Add an empty line only after the text
+                    # Check if it's the first line, and add ">>" accordingly
+                    prefix = ">> " if i == 0 else ""
+
+                    text_file.write(
+                        f"{format_timestamp_to_txt(start_time_str)}\n{prefix}{lines[i + 1].strip()}\n\n"
+                    )  # Write formatted timestamp and transcription text
+                    vtt_file.write(
+                        f"{i // 2 + 1}\n{start_time_vtt} --> {format_timestamp(end_time_str)}\n{lines[i + 1].strip()}\n\n"
+                    )  # Write line number, timestamp, and transcription text
 
             txt_file_paths.append(txt_file_path)
             vtt_file_paths.append(vtt_file_path)
