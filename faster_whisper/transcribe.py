@@ -1,8 +1,10 @@
 import itertools
+import json
 import logging
 import os
 import zlib
 
+from inspect import signature
 from typing import BinaryIO, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import ctranslate2
@@ -92,8 +94,8 @@ class WhisperModel:
 
         Args:
           model_size_or_path: Size of the model to use (tiny, tiny.en, base, base.en,
-            small, small.en, medium, medium.en, large-v1, large-v2, or large), a path to a converted
-            model directory, or a CTranslate2-converted Whisper model ID from the Hugging Face Hub.
+            small, small.en, medium, medium.en, large-v1, large-v2, large-v3, or large), a path to a
+            converted model directory, or a CTranslate2-converted Whisper model ID from the HF Hub.
             When a size or a model ID is configured, the converted model is downloaded
             from the Hugging Face Hub.
           device: Device to use for computation ("cpu", "cuda", "auto").
@@ -142,7 +144,8 @@ class WhisperModel:
                 "openai/whisper-tiny" + ("" if self.model.is_multilingual else ".en")
             )
 
-        self.feature_extractor = FeatureExtractor()
+        self.feat_kwargs = self._get_feature_kwargs(model_path)
+        self.feature_extractor = FeatureExtractor(**self.feat_kwargs)
         self.num_samples_per_token = self.feature_extractor.hop_length * 2
         self.frames_per_second = (
             self.feature_extractor.sampling_rate // self.feature_extractor.hop_length
@@ -151,13 +154,29 @@ class WhisperModel:
             self.feature_extractor.sampling_rate // self.num_samples_per_token
         )
         self.input_stride = 2
-        self.time_precision = 0.0001
+        self.time_precision = 0.02
         self.max_length = 448
 
     @property
     def supported_languages(self) -> List[str]:
         """The languages supported by the model."""
         return list(_LANGUAGE_CODES) if self.model.is_multilingual else ["en"]
+
+    def _get_feature_kwargs(self, model_path) -> dict:
+        preprocessor_config_file = os.path.join(model_path, "preprocessor_config.json")
+        config = {}
+        if os.path.isfile(preprocessor_config_file):
+            try:
+                with open(preprocessor_config_file, "r", encoding="utf-8") as json_file:
+                    config = json.load(json_file)
+                valid_keys = signature(FeatureExtractor.__init__).parameters.keys()
+                config = {k: v for k, v in config.items() if k in valid_keys}
+            except json.JSONDecodeError as e:
+                self.logger.warning(
+                    "Could not load preprocessor_config.json: %s", str(e)
+                )
+
+        return config
 
     def transcribe(
         self,
@@ -188,7 +207,7 @@ class WhisperModel:
         suppress_blank: bool = True,
         suppress_tokens: Optional[List[int]] = [-1],
         without_timestamps: bool = False,
-        max_initial_timestamp: float = 5.0,
+        max_initial_timestamp: float = 1.0,
         word_timestamps: bool = True,
         prepend_punctuations: str = "\"'“¿([{-",
         append_punctuations: str = "\"'.。,，!！?？:：”)]}、",
@@ -712,6 +731,13 @@ class WhisperModel:
             decode_result = max(
                 below_cr_threshold_results or all_results, key=lambda x: x[1]
             )
+            # to pass final temperature for prompt_reset_on_temperature
+            decode_result = (
+                decode_result[0],
+                decode_result[1],
+                temperature,
+                decode_result[3],
+            )
 
         return decode_result
 
@@ -889,6 +915,13 @@ class WhisperModel:
         words, word_tokens = tokenizer.split_to_word_tokens(
             text_tokens + [tokenizer.eot]
         )
+        if len(word_tokens) <= 1:
+            # return on eot only
+            # >>> np.pad([], (1, 0))
+            # array([0.])
+            # This results in crashes when we lookup jump_times with float, like
+            # IndexError: arrays used as indices must be of integer (or boolean) type
+            return []
         word_boundaries = np.pad(np.cumsum([len(t) for t in word_tokens[:-1]]), (1, 0))
         if len(word_boundaries) <= 1:
             return []

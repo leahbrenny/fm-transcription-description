@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const folderLabel = document.getElementById("folderLabel");
   const fileHeader = document.getElementById("fileHeader");
   const stepOneDescription = document.getElementById("stepOneDescription");
-  const generateButton = document.getElementById("generateButton"); // Added this line
+  const generateButton = document.getElementById("generateButton");
 
   fileInput.addEventListener("change", updateFileDisplay);
   folderInput.addEventListener("change", updateFileDisplay);
@@ -20,39 +20,37 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (files.length > 0) {
       const filteredFileNames = Array.from(files)
-        .map((file) => file.name.replace(/\.\w+$/, "")) // Remove extension
-        .sort(); // Sort file names alphabetically
+        .map((file) => file.name.replace(/\.\w+$/, ""))
+        .sort();
       displayFileNames(filteredFileNames, nameDisplay);
       showButtons();
       hideLabels();
-      showHeaders(); // Show "File Name" header
-      enableGenerateButton(); // Enable the "Generate" button
+      showHeaders();
+      enableGenerateButton();
     } else {
       hideButtons();
       showLabels();
-      hideHeaders(); // Show "To begin..." header
-      disableGenerateButton(); // Disable the "Generate" button
+      hideHeaders();
+      disableGenerateButton();
     }
   }
 
-  // Function to enable the "Generate" button
   function enableGenerateButton() {
     generateButton.disabled = false;
   }
 
-  // Function to disable the "Generate" button
   function disableGenerateButton() {
     generateButton.disabled = true;
   }
 
   function resetFileInput() {
     fileInput.value = null;
-    nameDisplay.innerText = "";
+    nameDisplay.innerHTML = ""; // Change innerText to innerHTML
   }
 
   function resetFolderInput() {
     folderInput.value = null;
-    nameDisplay.innerText = "";
+    nameDisplay.innerHTML = ""; // Change innerText to innerHTML
   }
 
   function displayFileNames(fileNames, displayElement) {
@@ -96,7 +94,6 @@ document.addEventListener("DOMContentLoaded", function () {
     folderLabel.style.display = "block";
   }
 
-  // Reset button functionality
   resetButton.addEventListener("click", function () {
     resetFileInput();
     resetFolderInput();
