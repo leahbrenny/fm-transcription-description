@@ -4,6 +4,7 @@ import os
 import openai
 import re
 import shutil
+import string
 import zipfile
 from faster_whisper import WhisperModel
 from faster_whisper.utils import format_timestamp
@@ -88,9 +89,8 @@ def transcribe_audio():
                     start_time = None
                     end_time = None
 
-                    # The current line is a single line of text
-                    # To be added to the total transcription text (maybe replace wiht "block").
-                    # It does not wrap.
+                    # The current_line is a single line of text
+                    # To be added to the total vtt_block
                     vtt_block = ""
                     timestamp = ""
                     current_line = ""
@@ -122,6 +122,27 @@ def transcribe_audio():
                             vtt_block += current_line + "\n"
                             current_line = ""
 
+                        def contains_punctuation(word):
+                            # Exclude characters from punctuation search
+                            excluded_characters = ["'", ","]
+
+                            # Check if any character in the word is punctuation (excluding specified characters)
+                            return any(
+                                char
+                                in set(string.punctuation) - set(excluded_characters)
+                                for char in word
+                            )
+
+                        current_word = word.word
+
+                        # if (
+                        #     contains_punctuation(current_word)
+                        #     and len(vtt_block) >= 60 or len(vtt_block) >= 90
+                        # ):
+                        #     print(
+                        #         f"Create a new vtt block here: {current_word}"
+                        #     )
+
                     # If there is a current line, write another
                     # VTT "block" to the transcript.
                     if current_line:
@@ -131,6 +152,10 @@ def transcribe_audio():
                     vtt_block = timestamp + vtt_block + "\n"
 
                     transcription_text += vtt_block
+
+                    # # Calculate the percentage completion
+                    # percent_completed = (end_time / total_duration) * 100
+                    # print(f"{audio_file.filename}: {percent_completed:.2f}%")
 
                 transcription_results.append((audio_file.filename, transcription_text))
 
@@ -214,18 +239,24 @@ def generate_descriptions():
         response_descriptions = []
 
         for filename in os.listdir(temp_directory):
-            if filename.endswith(".txt"):
+            if filename.endswith(".vtt"):  # Check for .vtt files
                 # Extract the file name without extension
                 file_name_without_extension = os.path.splitext(filename)[0]
 
-                txt_file_path = os.path.join(temp_directory, filename)
-                with open(txt_file_path, "r") as text_file:
-                    transcription_text = text_file.read()
+                vtt_file_path = os.path.join(temp_directory, filename)
+                with open(vtt_file_path, "r") as vtt_file:
+                    vtt_content = vtt_file.read()
 
-                # Use regular expressions to extract the text within square brackets
-                timestamps_removed = re.sub(
-                    r"\[\d+\.\d+s -> \d+\.\d+s\] ", "", transcription_text
+                # Use regular expressions to extract relevant information
+                pattern = re.compile(
+                    r"(\d+)\n(\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3})\n(.*?)(?=\d+\n\d{2}:\d{2}\.\d{3} -->|\Z)",
+                    re.DOTALL,
                 )
+                matches = pattern.findall(vtt_content)
+
+                timestamps_removed = ""
+                for match in matches:
+                    timestamps_removed += f"{match[0]}\n{match[1]}\n{match[2]}\n\n"
 
                 # Combine the entire text into a single message
                 response = openai.ChatCompletion.create(
