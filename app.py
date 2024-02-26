@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, send_file
 from dotenv import load_dotenv
+import json
 import os
 import openai
 import re
@@ -7,7 +8,7 @@ import shutil
 import string
 import zipfile
 from faster_whisper import WhisperModel
-from faster_whisper.utils import format_timestamp
+from faster_whisper.utils import format_timestamp, format_txt_timestamp
 
 app = Flask(__name__)
 
@@ -20,12 +21,66 @@ if not os.path.exists("temp"):
     os.makedirs("temp")
 
 
+def segments_to_json(segments):
+    json_segments = []
+    for segment in segments:
+        json_segment = {
+            "id": segment.id,
+            "seek": segment.seek,
+            "start": segment.start,
+            "end": segment.end,
+            "text": segment.text,
+            "temperature": segment.temperature,
+            "avg_logprob": segment.avg_logprob,
+            "compression_ratio": segment.compression_ratio,
+            "no_speech_prob": segment.no_speech_prob,
+            "words": [],
+        }
+        if segment.words:
+            for word in segment.words:
+                json_segment["words"].append(
+                    {
+                        "word": word.word,
+                        "start": word.start,
+                        "end": word.end,
+                        "probability": word.probability,
+                    }
+                )
+        json_segments.append(json_segment)
+    return json_segments
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# ...
+@app.route("/test")
+def test_formatting():
+    try:
+        test_json = "last/enterprise-typescript_3A.mp4.json"
+        with open(test_json, "r") as json_file:
+            json_data = json.load(json_file)
+
+        # Empty the temp directory
+        temp_directory = "temp"
+        for filename in os.listdir(temp_directory):
+            file_path = os.path.join(temp_directory, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print(f"Failed to remove {file_path}: {e}")
+
+        format_txt(json_data)  # Pass json_data to format_txt function
+        format_vtt(json_data)  # Pass json_data to format_vtt function
+
+        return "Test successful!"
+
+    except Exception as e:
+        return "An error occurred during testing: " + str(e)
 
 
 @app.route("/transcribe", methods=["POST"])
@@ -59,12 +114,7 @@ def transcribe_audio():
             except Exception as e:
                 print(f"Failed to remove {file_path}: {e}")
 
-        for filename in os.listdir(os.getcwd()):
-            if filename.endswith(".zip"):
-                os.unlink(filename)
-
         transcription_results = []
-        txt_file_paths = []
 
         for audio_file in audio_files:
             file_extension = os.path.splitext(audio_file.filename)[1].lower()
@@ -75,152 +125,149 @@ def transcribe_audio():
                 print("Processing " + audio_file.filename)
                 segments, info = model.transcribe(audio_file_path, beam_size=5)
 
-                # Initialize transcription text.
-                # Transcription text is the entire
-                # document.
-                transcription_text = ""
-                total_duration = info.duration
-
-                # Potentially delcare a "block" for each VTT block.
-
-                # Process each segment in the segment list.
-                for segment in segments:
-                    # Initialize the start time, end time, and current line.
-                    start_time = None
-                    end_time = None
-
-                    # The current_line is a single line of text
-                    # To be added to the total vtt_block
-                    vtt_block = ""
-                    timestamp = ""
-                    current_line = ""
-
-                    # For each word in the segment ...
-                    for word in segment.words:
-                        # Set the start time, if it has not been set.
-                        if start_time is None:
-                            start_time = word.start
-                        # If start time is 0.0 add 200 milliseconds
-                        if start_time == 0.0:
-                            start_time = 0.2
-
-                        # Update the end time as each word is processed.
-                        end_time = word.end
-
-                        # Recreate the timestamp for every word in the segment.
-                        timestamp = f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
-
-                        # Update the current line with each word.
-                        current_line += word.word
-
-                        # If our line length is >= 45 characters...
-                        # Add the current line to the vtt_block
-                        # Clear the current line.
-                        if len(current_line) >= 45:
-                            # transcription_text += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n {current_line}\n"
-                            # start_time = None
-                            vtt_block += current_line + "\n"
-                            current_line = ""
-
-                        def contains_punctuation(word):
-                            # Exclude characters from punctuation search
-                            excluded_characters = ["'", ","]
-
-                            # Check if any character in the word is punctuation (excluding specified characters)
-                            return any(
-                                char
-                                in set(string.punctuation) - set(excluded_characters)
-                                for char in word
-                            )
-
-                        current_word = word.word
-
-                        # if (
-                        #     contains_punctuation(current_word)
-                        #     and len(vtt_block) >= 60 or len(vtt_block) >= 90
-                        # ):
-                        #     print(
-                        #         f"Create a new vtt block here: {current_word}"
-                        #     )
-
-                    # If there is a current line, write another
-                    # VTT "block" to the transcript.
-                    if current_line:
-                        # transcription_text += f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n {current_line}\n"
-                        vtt_block += current_line + "\n"
-
-                    vtt_block = timestamp + vtt_block + "\n"
-
-                    transcription_text += vtt_block
-
-                    # # Calculate the percentage completion
-                    # percent_completed = (end_time / total_duration) * 100
-                    # print(f"{audio_file.filename}: {percent_completed:.2f}%")
-
-                transcription_results.append((audio_file.filename, transcription_text))
-
+                # Process segments and convert to JSON-compatible format
+                transcription_results.append(
+                    (audio_file.filename, segments_to_json(segments))
+                )
                 os.remove(audio_file_path)
             else:
                 return f"Invalid file type: {audio_file.filename}. Supported types: .mp3 and .mp4"
 
-        txt_file_paths = []
-        vtt_file_paths = []
+        # Convert transcription data to JSON format
+        json_results = []
+        for filename, segments in transcription_results:
+            json_results.append({"filename": filename, "segments": segments})
 
-        for filename, transcription_text in transcription_results:
-            txt_file_path = os.path.join("temp", f"{os.path.splitext(filename)[0]}.txt")
-            vtt_file_path = os.path.join("temp", f"{os.path.splitext(filename)[0]}.vtt")
+        # Write JSON data to a file in the temp directory
+        json_filename = os.path.join("temp", "transcription_results.json")
+        with open(json_filename, "w") as json_file:
+            json.dump(json_results, json_file, indent=2)
 
-            with open(txt_file_path, "w") as text_file, open(
-                vtt_file_path, "w"
-            ) as vtt_file:
-                # Split the transcript text on line breaks.
-                lines = transcription_text.strip().split("\n")
+        # Call format_txt function to create .txt files
+        format_txt(json_results)
 
-                # Write the opening format line.
-                vtt_file.write("WEBVTT\n\n")
+        format_vtt(json_results)
 
-                # Initialize the section number.
-                line_number = 1
-                line_len = len(lines)
-
-                # Iterate over each line of the transcript.
-                for i, line in enumerate(lines):
-                    if 0 == i:
-                        vtt_file.write(f"{line_number}\n{line.strip()}\n")
-                        line_number = line_number + 1
-                    elif "" == line:
-                        if (line_len - 1) != i:
-                            vtt_file.write(f"\n{line_number}\n")
-                            line_number = line_number + 1
-                    else:
-                        vtt_file.write(f"{line.strip()}\n")
-
-                    # if i % 2 == 0:
-                    #     vtt_file.write(f"{line_number}\n{line.strip()}\n")
-                    #     line_number += 1
-                    # else:
-                    #     vtt_file.write(f"{line.strip()}\n\n")
-
-            txt_file_paths.append(txt_file_path)
-            vtt_file_paths.append(vtt_file_path)
-
-        if len(txt_file_paths) > 0:
-            zip_filename = "transcriptions.zip"
-            with zipfile.ZipFile(zip_filename, "w") as zipf:
-                for txt_file_path in txt_file_paths:
-                    zipf.write(txt_file_path, os.path.basename(txt_file_path))
-                    vtt_file_path = txt_file_path.replace(".txt", ".vtt")
-                    if os.path.exists(vtt_file_path):
-                        zipf.write(vtt_file_path, os.path.basename(vtt_file_path))
-
-        if os.path.exists(zip_filename):
-            response = send_file(zip_filename, as_attachment=True)
-            return response
-
-        return "No valid transcription files found."
+        # Return the JSON data directly
+        return json.dumps(json_results, indent=2)
 
     except Exception as e:
         return "An error occurred during transcription: " + str(e)
+
+
+def format_txt(json_data):
+    for item in json_data:
+        filename_without_extension = os.path.splitext(item["filename"])[0]
+        filename = os.path.join("temp", filename_without_extension)
+        segments = item["segments"]
+        with open(f"{filename}.txt", "w") as txt_file:
+            total_duration = 0
+            current_block = ""
+            start_time = segments[0]["words"][0][
+                "start"
+            ]  # Start time of the first word in the first segment
+            for i, segment in enumerate(segments):
+                segment_duration = (
+                    segment["words"][-1]["end"] - segment["words"][0]["start"]
+                )
+                segment_text = segment["text"]
+                # Remove leading space from text
+                if segment_text.startswith(" "):
+                    segment_text = segment_text[1:]
+                # Check if adding this segment exceeds 30 seconds
+                if total_duration + segment_duration <= 30:
+                    if total_duration == 0:  # Add '>>' prefix only to the first line
+                        current_block += f">> {segment_text} "
+                    else:
+                        current_block += f"{segment_text} "
+                    total_duration += segment_duration
+                else:
+                    # Write the current block to file
+                    txt_file.write(
+                        f"{format_txt_timestamp(start_time)}\n{current_block.strip()}\n\n"
+                    )
+                    # Update start time for the next block
+                    start_time = segment["words"][0]["start"]
+                    # Start a new block
+                    total_duration = segment_duration
+                    current_block = f"{segment_text} "
+            # Write the remaining block if any
+            if current_block:
+                txt_file.write(
+                    f"{format_txt_timestamp(start_time)}\n{current_block.strip()}\n\n"
+                )
+
+# If new vtt_block set start time to word.start
+
+# Check if vtt_block >= 90
+# Create new vtt_block
+
+# Check if word contains an end punctuation and vtt_block >= 60
+# Add word to vtt_block
+# Create new vtt_block
+
+# Check if current_line >= 45
+# Create new line
+
+# Add word to vtt_block and current_line
+# Set end time to word.end
+
+
+# Use data in json file to generate .txt and .vtt files???
+def format_vtt(json_data):
+    for item in json_data:
+        filename_without_extension = os.path.splitext(item["filename"])[0]
+        filename = os.path.join("temp", filename_without_extension)
+        segments = item["segments"]
+        vtt_filename = f"{filename}.vtt"
+
+        with open(vtt_filename, "w") as vtt_file:
+            vtt_file.write("WEBVTT\n\n")
+            segment_number = 1
+            for segment in segments:
+                # Using the start/end time of the first/last words in the segment
+                start_time = segment["words"][0]["start"]
+                end_time = segment["words"][-1]["end"]
+
+                # Adjust start time if it's 0.0
+                if start_time == 0.0:
+                    start_time += 0.2  # Add 200 milliseconds
+
+                # Remove the extra single space before the first word of each segment
+                text = segment["text"]
+                if text.startswith(" "):
+                    text = text[1:]
+
+                # Split text into lines at spaces without breaking words
+                words = text.split()
+                lines = []
+                current_line = ""
+                for word in words:
+                    if len(current_line) + len(word) + 1 <= 45:
+                        current_line += " " + word
+                    else:
+                        lines.append(current_line.strip())
+                        current_line = word
+                if current_line:
+                    lines.append(current_line.strip())
+
+                vtt_file.write(f"{segment_number}\n")
+                vtt_file.write(
+                    f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
+                )
+                # Write lines to VTT file, considering merging with next line if it has 3 or fewer words
+                i = 0
+                while i < len(lines):
+                    line = lines[i]
+                    if i < len(lines) - 1:
+                        next_line_words = len(lines[i + 1].split())
+                        if next_line_words <= 3:
+                            line += " " + lines[i + 1]
+                            i += 1
+                    vtt_file.write(f"{line}\n")
+                    i += 1
+                vtt_file.write("\n")
+                segment_number += 1
 
 
 # ...

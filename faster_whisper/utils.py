@@ -119,7 +119,7 @@ def download_model(
 # Formats timestamps into [HH:MM:SS] for .txt files
 def format_txt_timestamp(
     seconds: float,
-    always_include_hours: bool = False,
+    always_include_hours: bool = True,
     decimal_marker: str = ".",
 ) -> str:
     assert seconds >= 0, "non-negative timestamp expected"
@@ -135,12 +135,12 @@ def format_txt_timestamp(
     milliseconds -= seconds * 1_000
 
     hours_marker = f"{hours:02d}:" if always_include_hours or hours > 0 else ""
-    return f"[{hours_marker}{minutes:02d}:{seconds:02d}:{milliseconds:03d}]"
+    return f"[{hours_marker}{minutes:02d}:{seconds:02d}]"
 
 
 def format_timestamp(
     seconds: float,
-    always_include_hours: bool = False,
+    always_include_hours: bool = True,
     decimal_marker: str = ".",
 ) -> str:
     assert seconds >= 0, "non-negative timestamp expected"
