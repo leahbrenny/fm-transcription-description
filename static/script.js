@@ -57,10 +57,20 @@ document.addEventListener("DOMContentLoaded", function () {
     displayElement.innerHTML = fileNames
       .map(
         (name) =>
-          `<div class="file-container"><h4 class="file-name">${name}</h4><div><h4 class="waiting">...(waiting)</h4><div class="loading-bar-background"><div id="${name}loader" class="loading-bar"></div></div></div></div>`
+          `<div class="file-container"><h4 class="file-name">${name}</h4><div id="${name}Message" class="message" style="display:none;">...(waiting)</div><div class="loading-bar-background"><div id="${name}loader" class="loading-bar"></div></div></div>`
       )
       .join("\n");
   }
+
+  // Add event listener to the download button
+  downloadButton.addEventListener("click", function () {
+    const fileContainers = document.querySelectorAll(".file-container");
+    fileContainers.forEach((container) => {
+      const fileName = container.querySelector(".file-name").textContent;
+      document.getElementById(`${fileName}Message`).style.display = "block"; // Show the waiting message
+    });
+  });
+
 
   function showHeaders() {
     fileHeader.style.display = "block";
@@ -101,4 +111,33 @@ document.addEventListener("DOMContentLoaded", function () {
     showLabels();
     hideHeaders();
   });
+
+  // AJAX form submission
+  document
+    .getElementById("transcription")
+    .addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      var formElement = event.target;
+      var formData = new FormData(formElement);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/transcribe", true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          var response = JSON.parse(xhr.responseText);
+          const fileContainers = document.querySelectorAll(".file-container");
+          fileContainers.forEach((container) => {
+            const fileName = container.querySelector(".file-name").textContent;
+            document.getElementById(`${fileName}Message`).innerText =
+              "Complete";
+          });
+        } else {
+          console.error(
+            "Transcription request failed with status " + xhr.status
+          );
+        }
+      };
+      xhr.send(formData);
+    });
 });

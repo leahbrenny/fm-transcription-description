@@ -1,6 +1,7 @@
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, jsonify
 from dotenv import load_dotenv
 import json
+import math
 import os
 import openai
 import re
@@ -52,7 +53,9 @@ def segments_to_json(segments):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Check if a message indicating transcription completion is in the query parameters
+    message = request.args.get("message")
+    return render_template("index.html", message=message)
 
 
 @app.route("/test")
@@ -88,7 +91,7 @@ def transcribe_audio():
     audio_files = request.files.getlist("audio_files")
 
     if not audio_files:
-        return "No files provided."
+        return jsonify({"message": "No files provided."}), 400
 
     try:
         # Check if GPU is available
@@ -116,13 +119,14 @@ def transcribe_audio():
 
         transcription_results = []
 
-        for audio_file in audio_files:
+        for index, audio_file in enumerate(audio_files):
             file_extension = os.path.splitext(audio_file.filename)[1].lower()
 
             if file_extension in (".mp3", ".mp4"):
                 audio_file_path = os.path.join("temp", audio_file.filename)
                 audio_file.save(audio_file_path)
                 print("Processing " + audio_file.filename)
+
                 segments, info = model.transcribe(audio_file_path, beam_size=5)
 
                 # Process segments and convert to JSON-compatible format
@@ -130,6 +134,7 @@ def transcribe_audio():
                     (audio_file.filename, segments_to_json(segments))
                 )
                 os.remove(audio_file_path)
+
             else:
                 return f"Invalid file type: {audio_file.filename}. Supported types: .mp3 and .mp4"
 
@@ -142,14 +147,13 @@ def transcribe_audio():
         json_filename = os.path.join("temp", "transcription_results.json")
         with open(json_filename, "w") as json_file:
             json.dump(json_results, json_file, indent=2)
-
+        
         # Call format_txt function to create .txt files
         format_txt(json_results)
 
         format_vtt(json_results)
 
-        # Return the JSON data directly
-        return json.dumps(json_results, indent=2)
+        return jsonify({"message": "Transcription completed successfully."})
 
     except Exception as e:
         return "An error occurred during transcription: " + str(e)
@@ -203,27 +207,32 @@ def format_txt(json_data):
 # Create new vtt_block
 
 # Check if word contains an end punctuation and vtt_block >= 60
-# Add word to vtt_block
+# Add word w/ puncuation to to vtt_block
 # Create new vtt_block
-
-# Check if current_line >= 45
-# Create new line
 
 # Add word to vtt_block and current_line
 # Set end time to word.end
 
 
-# Use data in json file to generate .txt and .vtt files???
 def format_vtt(json_data):
+    # Iterate through each item in the JSON data
     for item in json_data:
+        # Extract filename without extension
         filename_without_extension = os.path.splitext(item["filename"])[0]
+        # Generate file path for VTT file
         filename = os.path.join("temp", filename_without_extension)
+        # Extract segments from the item
         segments = item["segments"]
+        # Create VTT file name
         vtt_filename = f"{filename}.vtt"
 
+        # Open VTT file for writing
         with open(vtt_filename, "w") as vtt_file:
+            # Write VTT header
             vtt_file.write("WEBVTT\n\n")
+            # Initialize segment number
             segment_number = 1
+            # Iterate through each segment
             for segment in segments:
                 # Using the start/end time of the first/last words in the segment
                 start_time = segment["words"][0]["start"]
@@ -242,31 +251,29 @@ def format_vtt(json_data):
                 words = text.split()
                 lines = []
                 current_line = ""
+                # Iterate through words and create lines without breaking words
                 for word in words:
                     if len(current_line) + len(word) + 1 <= 45:
                         current_line += " " + word
                     else:
                         lines.append(current_line.strip())
                         current_line = word
+                # Append the last line
                 if current_line:
                     lines.append(current_line.strip())
 
+                # Write segment number to VTT file
                 vtt_file.write(f"{segment_number}\n")
+                # Write start and end time of segment to VTT file
                 vtt_file.write(
                     f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
                 )
-                # Write lines to VTT file, considering merging with next line if it has 3 or fewer words
-                i = 0
-                while i < len(lines):
-                    line = lines[i]
-                    if i < len(lines) - 1:
-                        next_line_words = len(lines[i + 1].split())
-                        if next_line_words <= 3:
-                            line += " " + lines[i + 1]
-                            i += 1
+                # Write lines to VTT file
+                for line in lines:
                     vtt_file.write(f"{line}\n")
-                    i += 1
+                # Add empty line between segments
                 vtt_file.write("\n")
+                # Increment segment number
                 segment_number += 1
 
 

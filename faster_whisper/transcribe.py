@@ -181,6 +181,7 @@ class WhisperModel:
     def transcribe(
         self,
         audio: Union[str, BinaryIO, np.ndarray],
+        filename: Optional[str] = None,
         language: Optional[str] = None,
         task: str = "transcribe",
         beam_size: int = 5,
@@ -616,6 +617,7 @@ class WhisperModel:
                         options.prompt_reset_on_temperature,
                     )
 
+                print("In segments")
                 prompt_reset_since = len(all_tokens)
 
     def encode(self, features: np.ndarray) -> ctranslate2.StorageView:
@@ -626,6 +628,7 @@ class WhisperModel:
         features = np.expand_dims(features, 0)
         features = get_ctranslate2_storage(features)
 
+        print("In encode")
         return self.model.encode(features, to_cpu=to_cpu)
 
     def generate_with_fallback(
@@ -739,6 +742,7 @@ class WhisperModel:
                 decode_result[3],
             )
 
+        print("In generate with fallback")
         return decode_result
 
     def get_prompt(
@@ -767,6 +771,7 @@ class WhisperModel:
                 prompt.append(tokenizer.timestamp_begin)
             prompt.extend(prefix_tokens)
 
+        print("In get_prompt")
         return prompt
 
     def add_word_timestamps(
@@ -885,6 +890,7 @@ class WhisperModel:
 
                 last_speech_timestamp = segment["end"]
 
+            print("In word timestamps")
             segment["words"] = words
 
     def find_alignment(
@@ -934,7 +940,7 @@ class WhisperModel:
             np.mean(text_token_probs[i:j])
             for i, j in zip(word_boundaries[:-1], word_boundaries[1:])
         ]
-
+        print("In alignment")
         return [
             dict(
                 word=word, tokens=tokens, start=start, end=end, probability=probability
@@ -977,17 +983,20 @@ def restore_speech_timestamps(
                 end=ts_map.get_original_time(segment.end),
             )
 
+        print("In speech timestamps")
         yield segment
 
 
 def get_ctranslate2_storage(segment: np.ndarray) -> ctranslate2.StorageView:
     segment = np.ascontiguousarray(segment)
     segment = ctranslate2.StorageView.from_array(segment)
+    print("In ctranslate")
     return segment
 
 
 def get_compression_ratio(text: str) -> float:
     text_bytes = text.encode("utf-8")
+    print("In compression")
     return len(text_bytes) / len(zlib.compress(text_bytes))
 
 
@@ -1012,6 +1021,7 @@ def get_suppressed_tokens(
         ]
     )
 
+    print("In suppressed tokens")
     return sorted(set(suppress_tokens))
 
 
