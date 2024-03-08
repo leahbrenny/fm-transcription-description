@@ -11,6 +11,8 @@
       type="text/javascript"
       src="{{ url_for('static', filename='script.js') }}"
     ></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js" integrity="sha512-Y5MDU6RaF5h5HE5BgqJlKkV12kbkbIgWHutcT+XHHNOUzr+HHjWZGC02sqEguuPglmFms3cc08WH2PhQ5rF8Cw==" crossorigin="anonymous"></script>
+
   </head>
   <body>
     <div class="upperBoxes">
@@ -27,6 +29,7 @@
           </h3>
           <h3 id="fileHeader">File Name</h3>
           <div id="nameDisplay" class="file-names-column"></div>
+          <div id="durationDisplay" class="file-duration"></div>
           <div class="buttons-row">
             <input
               type="file"

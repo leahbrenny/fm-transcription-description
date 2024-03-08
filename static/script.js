@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const fileHeader = document.getElementById("fileHeader");
   const stepOneDescription = document.getElementById("stepOneDescription");
   const generateButton = document.getElementById("generateButton");
+  const socket = io();
 
   fileInput.addEventListener("change", updateFileDisplay);
   folderInput.addEventListener("change", updateFileDisplay);
@@ -57,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
     displayElement.innerHTML = fileNames
       .map(
         (name) =>
-          `<div class="file-container"><h4 class="file-name">${name}</h4><div id="${name}Message" class="message" style="display:none;">...(waiting)</div><div class="loading-bar-background"><div id="${name}loader" class="loading-bar"></div></div></div>`
+          `<div class="file-container"><h4 class="file-name">${name}</h4><div id="${name}Status" class="message" style="display:none;">...(waiting)</div><div class="loading-bar-background"><div id="${name}loader" class="loading-bar"></div></div></div>`
       )
       .join("\n");
   }
@@ -67,10 +68,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const fileContainers = document.querySelectorAll(".file-container");
     fileContainers.forEach((container) => {
       const fileName = container.querySelector(".file-name").textContent;
-      document.getElementById(`${fileName}Message`).style.display = "block"; // Show the waiting message
+      document.getElementById(`${fileName}Status`).style.display = "block"; // Show the waiting message
     });
   });
-
 
   function showHeaders() {
     fileHeader.style.display = "block";
@@ -112,6 +112,43 @@ document.addEventListener("DOMContentLoaded", function () {
     hideHeaders();
   });
 
+  socket.on("current_file", function (data) {
+    
+    const filename = data.message;
+
+    // Extract filename without extension
+    const fileNameWithoutExtension = filename.split(".")[0];
+    console.log("Transcribing:", fileNameWithoutExtension);
+
+    const statusElement = document.getElementById(
+      `${fileNameWithoutExtension}Status`
+    );
+    if (statusElement) {
+      statusElement.innerText = "In Progress"; // Update the status to "In Progress"
+      console.log("Status Updated:", statusElement.innerText);
+    }
+  });
+
+  socket.on("audio_info", function (data) {
+    console.log("Received audio_info:", data);
+    // Display the duration and filename in some elements on your frontend, for example:
+    const durationDisplay = document.getElementById("durationDisplay");
+    if (durationDisplay) {
+      durationDisplay.innerText = `Duration: ${data.duration} seconds`;
+    }
+  });
+
+  // Event listener for "transcription_complete"
+  socket.on("transcription_complete", function (data) {
+    console.log("Transcription Completed:", data);
+  });
+
+  // Example of listening for transcription error event
+  socket.on("transcription_error", function (data) {
+    console.error("Transcription Error:", data.error);
+    // Handle error and update UI accordingly
+  });
+
   // AJAX form submission
   document
     .getElementById("transcription")
@@ -126,12 +163,6 @@ document.addEventListener("DOMContentLoaded", function () {
       xhr.onload = function () {
         if (xhr.status === 200) {
           var response = JSON.parse(xhr.responseText);
-          const fileContainers = document.querySelectorAll(".file-container");
-          fileContainers.forEach((container) => {
-            const fileName = container.querySelector(".file-name").textContent;
-            document.getElementById(`${fileName}Message`).innerText =
-              "Complete";
-          });
         } else {
           console.error(
             "Transcription request failed with status " + xhr.status

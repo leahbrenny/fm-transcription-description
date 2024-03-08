@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, send_file, jsonify
+from extensions import socketio
 from dotenv import load_dotenv
 import json
 import math
@@ -12,6 +13,8 @@ from faster_whisper import WhisperModel
 from faster_whisper.utils import format_timestamp, format_txt_timestamp
 
 app = Flask(__name__)
+socketio.init_app(app)
+
 
 # Define global variables to store transcription results and text file paths
 transcription_results = []
@@ -125,8 +128,10 @@ def transcribe_audio():
             if file_extension in (".mp3", ".mp4"):
                 audio_file_path = os.path.join("temp", audio_file.filename)
                 audio_file.save(audio_file_path)
-                print("Processing " + audio_file.filename)
-
+                socketio.emit(
+                    "current_file",
+                    {"message": f"{audio_file.filename}"},
+                )  # Emit transcription progress
                 segments, info = model.transcribe(audio_file_path, beam_size=5)
 
                 # Process segments and convert to JSON-compatible format
@@ -147,16 +152,25 @@ def transcribe_audio():
         json_filename = os.path.join("temp", "transcription_results.json")
         with open(json_filename, "w") as json_file:
             json.dump(json_results, json_file, indent=2)
-        
+
         # Call format_txt function to create .txt files
         format_txt(json_results)
 
         format_vtt(json_results)
 
-        return jsonify({"message": "Transcription completed successfully."})
+        # Transcription completion...
+        socketio.emit(
+            "transcription_complete",
+            {"message": "Transcription completed successfully."},
+        )
+
+        # Return a success response
+        return jsonify({"message": "Transcription completed successfully."}), 200
 
     except Exception as e:
-        return "An error occurred during transcription: " + str(e)
+        # Handle exceptions...
+        socketio.emit("transcription_error", {"error": str(e)})
+        return jsonify({"error": str(e)}), 500  # Return an error response
 
 
 def format_txt(json_data):
@@ -352,4 +366,5 @@ def generate_descriptions():
 # ...
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Run the application with SocketIO support
+    socketio.run(app, debug=True)

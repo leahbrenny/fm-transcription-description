@@ -6,6 +6,8 @@ import zlib
 
 from inspect import signature
 from typing import BinaryIO, Iterable, List, NamedTuple, Optional, Tuple, Union
+from flask import Flask
+from extensions import socketio
 
 import ctranslate2
 import numpy as np
@@ -280,9 +282,9 @@ class WhisperModel:
         duration = audio.shape[0] / sampling_rate
         duration_after_vad = duration
 
-        self.logger.info(
-            "Processing audio with duration %s", format_timestamp(duration)
-        )
+        emit_data(duration)
+
+        print(f"Processing audio with duration {duration}")
 
         if vad_filter:
             if vad_parameters is None:
@@ -411,6 +413,7 @@ class WhisperModel:
         seek = 0
         all_tokens = []
         prompt_reset_since = 0
+        print("In segments")
 
         if options.initial_prompt is not None:
             if isinstance(options.initial_prompt, str):
@@ -617,7 +620,6 @@ class WhisperModel:
                         options.prompt_reset_on_temperature,
                     )
 
-                print("In segments")
                 prompt_reset_since = len(all_tokens)
 
     def encode(self, features: np.ndarray) -> ctranslate2.StorageView:
@@ -890,7 +892,8 @@ class WhisperModel:
 
                 last_speech_timestamp = segment["end"]
 
-            print("In word timestamps")
+            print(f"In word timestamps {words[-1]['end']}")
+
             segment["words"] = words
 
     def find_alignment(
@@ -1057,3 +1060,8 @@ def merge_punctuations(alignment: List[dict], prepended: str, appended: str) -> 
         else:
             i = j
         j += 1
+
+
+def emit_data(duration):
+    socketio.emit("audio_info", {"duration": duration})
+
