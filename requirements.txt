@@ -9,3 +9,4 @@ python-dotenv==0.19.1
 tiktoken==0.3.3
 tokenizers==0.14.1
 torch==2.0.1
+python-socketio==5.11.1
