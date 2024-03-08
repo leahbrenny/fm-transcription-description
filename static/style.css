@@ -13,7 +13,7 @@ body {
   flex-direction: row;
   justify-content: space-between;
   margin: 0 auto;
-  padding: 0;
+  padding-bottom: 10px;
 }
 
 #stepOne,
@@ -127,7 +127,8 @@ button:disabled {
   flex-direction: row;
   justify-content: space-between;
   align-items: center; /* Center vertically */
-  padding: 5px 0px;
+  padding-top: 10px;
+
 }
 
 /* File Name Styles */
@@ -139,7 +140,6 @@ button:disabled {
 .waiting {
   color: #6c6c6c;
   margin: 0;
-  padding: 0;
 }
 
 /* File Name Display Styles */
@@ -178,4 +178,22 @@ input {
   align-content: space-between;
   margin: 0;
   padding: 0;
+}
+
+/* Loading Bar Styles */
+.loading-bar-background {
+  border-radius: 5px;
+  background-color: #ffffff;
+  height: 15px;
+  width: 150px;
+  align-items: center;
+  display: none;
+}
+
+.loading-bar {
+  border-radius: 5px;
+  height: 100%;
+  background-color: #4CAF50;
+  display: none;
+  transition: width 1s ease-out;
 }

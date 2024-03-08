@@ -282,7 +282,7 @@ class WhisperModel:
         duration = audio.shape[0] / sampling_rate
         duration_after_vad = duration
 
-        emit_data(duration)
+        emit_duration(duration)
 
         print(f"Processing audio with duration {duration}")
 
@@ -892,7 +892,7 @@ class WhisperModel:
 
                 last_speech_timestamp = segment["end"]
 
-            print(f"In word timestamps {words[-1]['end']}")
+            emit_word_end(words[-1]['end'])
 
             segment["words"] = words
 
@@ -1062,6 +1062,12 @@ def merge_punctuations(alignment: List[dict], prepended: str, appended: str) -> 
         j += 1
 
 
-def emit_data(duration):
-    socketio.emit("audio_info", {"duration": duration})
+def emit_duration(duration):
+    socketio.emit(
+        "audio_duration", {"duration": duration}
+    )
 
+def emit_word_end(last_word_end):
+    socketio.emit(
+        "word_end", {"word_end": last_word_end}
+    )
