@@ -66,13 +66,10 @@ label.custom-file-input-label:hover {
   background-color: #d0312b;
 }
 
-#generateButton {
-}
-
 button:disabled {
   color: #6c6c6c;
-  background-color: #4a4a4a; /* Adjust the opacity for a visual indication of being disabled */
-  cursor: not-allowed; /* Change the cursor to indicate that the button is not clickable */
+  background-color: #4a4a4a;
+  cursor: not-allowed;
 }
 
 /* Specific Button Styles */
@@ -144,7 +141,6 @@ button:disabled {
 
 /* File Name Display Styles */
 .file-name-display {
-  border: 2px solid green;
   color: #e6e6e6;
   padding: 10px;
   border: none;
@@ -193,7 +189,7 @@ input {
 .loading-bar {
   border-radius: 5px;
   height: 100%;
-  background-color: #4CAF50;
+  background-image: linear-gradient(to right, #cf1ec9, #d0312b, #d78125);
   display: none;
-  transition: width 1s ease-out;
+  transition: width 1s linear;
 }

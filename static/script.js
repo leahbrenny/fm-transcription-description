@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   fileInput.addEventListener("change", updateFileDisplay);
   folderInput.addEventListener("change", updateFileDisplay);
+  document.getElementById("generateButton").disabled = true;
 
   function updateFileDisplay() {
     const files = fileInput.files;
@@ -31,21 +32,24 @@ document.addEventListener("DOMContentLoaded", function () {
       showButtons();
       hideLabels();
       showHeaders();
-      enableGenerateButton();
     } else {
       hideButtons();
       showLabels();
       hideHeaders();
-      disableGenerateButton();
     }
   }
 
   function enableGenerateButton() {
     generateButton.disabled = false;
+    document.getElementById("stepTwoDescription").innerText = "Transcripts ready. Generate descriptions?"
+    document.getElementById("stepTwoDescription").classList.remove("waiting")
   }
 
   function disableGenerateButton() {
     generateButton.disabled = true;
+    document.getElementById("stepTwoDescription").innerText =
+      "Waiting on Step 1...";
+    document.getElementById("stepTwoDescription").classList.add("waiting");
   }
 
   function resetFileInput() {
@@ -122,6 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
     hideButtons();
     showLabels();
     hideHeaders();
+    disableGenerateButton();
   });
 
   socket.on("current_file", function (data) {
@@ -196,6 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "none"; // Hide the loading bar background
       statusElement.style.display = "block";
       statusElement.innerText = "Complete";
+      enableGenerateButton();
     }
   });
 
