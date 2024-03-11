@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
   fileInput.addEventListener("change", updateFileDisplay);
   folderInput.addEventListener("change", updateFileDisplay);
   document.getElementById("generateButton").disabled = true;
+  document.getElementById("stepTwoDescription").classList.add("waiting")
 
   function updateFileDisplay() {
     const files = fileInput.files;
@@ -89,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function showHeaders() {
-    fileHeader.style.display = "block";
+    fileHeader.style.display = "flex";
     stepOneDescription.style.display = "none";
   }
 

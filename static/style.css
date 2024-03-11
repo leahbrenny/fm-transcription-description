@@ -5,6 +5,7 @@ body {
   font-family: Arial, sans-serif;
   padding: 20px;
   margin: 0;
+  box-sizing: border-box; /* Include padding and borders in the width */
 }
 
 .upperBoxes {
@@ -14,6 +15,11 @@ body {
   justify-content: space-between;
   margin: 0 auto;
   padding-bottom: 10px;
+}
+
+.lowerBoxes {
+  width: 880px;
+  margin: 0 auto;
 }
 
 #stepOne,
@@ -28,11 +34,16 @@ h3 {
   color: #e6e6e6;
 }
 
+h3 {
+  font-weight: 400;
+  font-size: 1.15rem;
+}
+
 /* Form Styles */
 form {
   background-color: #383838;
   display: flex;
-  padding: 10px;
+  padding: 20px;
   flex-direction: column;
   align-items: center;
   border-radius: 8px;
@@ -40,8 +51,16 @@ form {
 
 /* Step Description and File Header Styles */
 .step-description,
-#fileHeader {
+#fileHeader,
+#stepTwoDescription{
+  display: flex;
+  width: 80%;
   text-align: left;
+  margin: 0px;
+}
+
+.descriptionContainer {
+  width: 100%;
 }
 
 /* Button Styles */
@@ -82,6 +101,15 @@ button:disabled {
 #resetButton {
   background-color: #6c6c6c;
   color: #383838;
+}
+
+#generateButton {
+  margin-top: 10px;
+}
+
+.buttonLeft {
+display: flex;
+width: 100%;
 }
 
 /* File Names Display Styles */

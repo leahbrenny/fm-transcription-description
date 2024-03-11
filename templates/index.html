@@ -24,10 +24,12 @@
           enctype="multipart/form-data"
           id="transcription"
         >
+        <div class="descriptionContainer">
           <h3 id="stepOneDescription" class="step-description">
             To begin, choose a local video file to generate transcripts:
           </h3>
           <h3 id="fileHeader">File Name</h3>
+        </div>
           <div id="nameDisplay" class="file-names-column"></div>
           <div class="buttons-row">
             <input
@@ -71,17 +73,19 @@
       <div id="stepTwo">
         <h2>2 - Generate Descriptions</h2>
         <form id="description" action="/generate_descriptions" method="POST">
-          <div>
-            <h3 id="stepTwoDescription" class="waiting">Waiting on Step 1...</h3>
+          <div class="descriptionContainer">
+            <h3 id="stepTwoDescription" class="step-description">Waiting on Step 1...</h3>  
+            </div>
+            <div class="buttonLeft">
             <button id="generateButton" type="submit" >Generate</button>
-          </div>
+            </div>
         </form>
       </div>
     </div>
-    <form action="/test" method="GET">
+    <div class="lowerBoxes">
+      <form action="/test" method="GET">
         <button type="submit">Run Test</button>
     </form>
-    <div class="lowerBoxes">
       <div id="stepThree">
         <h2>3 - Append to Lesson Sheet</h2>
         <form></form>
