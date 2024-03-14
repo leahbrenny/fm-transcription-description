@@ -80,8 +80,8 @@ def test_formatting():
             except Exception as e:
                 print(f"Failed to remove {file_path}: {e}")
 
-        format_txt(json_data)  # Pass json_data to format_txt function
-        format_vtt(json_data)  # Pass json_data to format_vtt function
+        test_format_txt(json_data)  # Pass json_data to format_txt function
+        test_format_vtt(json_data)  # Pass json_data to format_vtt function
 
         return "Test successful!"
 
@@ -267,7 +267,7 @@ def format_vtt(json_data):
                 current_line = ""
                 # Iterate through words and create lines without breaking words
                 for word in words:
-                    if len(current_line) + len(word) + 1 <= 45:
+                    if len(current_line) + len(word) + 1 <= 50:
                         current_line += " " + word
                     else:
                         lines.append(current_line.strip())
@@ -289,6 +289,118 @@ def format_vtt(json_data):
                 vtt_file.write("\n")
                 # Increment segment number
                 segment_number += 1
+
+
+def wrap_text(text):
+    # Calculate the length of the text
+    text_length = len(text)
+
+    # Find the midpoint
+    midpoint = text_length // 2
+
+    # Find the nearest space before or after the midpoint
+    split_index = text_length
+    for i in range(midpoint, -1, -1):
+        if text[i] == " ":
+            split_index = i
+            break
+    for i in range(midpoint, text_length):
+        if text[i] == " ":
+            split_index = i
+            break
+
+    # Split the text into two parts
+    if split_index != -1:
+        first_part = text[:split_index].strip()
+        second_part = text[split_index:].strip()
+    else:
+        first_part = text.strip()
+        second_part = ""
+
+    return f"{first_part}\n{second_part}" if second_part else first_part
+
+
+def test_format_vtt(json_data):
+    # Iterate through each item in the JSON data
+    for item in json_data:
+        # Extract filename without extension
+        filename_without_extension = os.path.splitext(item["filename"])[0]
+        # Generate file path for VTT file
+        filename = os.path.join("temp", f"test_{filename_without_extension}")
+        # Extract segments from the item
+        segments = item["segments"]
+        # Create VTT file name
+        vtt_filename = f"{filename}.vtt"
+
+        # Open VTT file for writing
+        with open(vtt_filename, "w") as vtt_file:
+            # Write VTT header
+            vtt_file.write("WEBVTT\n\n")
+
+            # Initialize block number
+            block_number = 1
+
+            # Iterate through each segment
+            for segment in segments:
+                segment_text = segment["text"]
+                start_time = (
+                    0.2
+                    if segment["words"][0]["start"] == 0.0
+                    else segment["words"][0]["start"]
+                )
+                end_time = segment["words"][-1]["end"]
+                vtt_file.write(f"{block_number}\n")  # Write block number
+                vtt_file.write(
+                    f"{format_timestamp(start_time)} --> {format_timestamp(end_time)}\n"
+                )  # Write timestamp
+                wrapped_text = wrap_text(segment_text)  # Wrap text
+                vtt_file.write(
+                    wrapped_text + "\n\n"
+                )  # Write the wrapped text block to VTT file
+                block_number += 1  # Increment block number
+
+
+def test_format_txt(json_data):
+    for item in json_data:
+        filename_without_extension = os.path.splitext(item["filename"])[0]
+        filename = os.path.join("temp", filename_without_extension)
+        segments = item["segments"]
+        with open(f"{filename}.txt", "w") as txt_file:
+            total_duration = 0
+            current_block = ""
+            start_time = segments[0]["words"][0][
+                "start"
+            ]  # Start time of the first word in the first segment
+            for i, segment in enumerate(segments):
+                segment_duration = (
+                    segment["words"][-1]["end"] - segment["words"][0]["start"]
+                )
+                segment_text = segment["text"]
+                # Remove leading space from text
+                if segment_text.startswith(" "):
+                    segment_text = segment_text[1:]
+                # Check if adding this segment exceeds 30 seconds
+                if total_duration + segment_duration <= 30:
+                    if total_duration == 0:  # Add '>>' prefix only to the first line
+                        current_block += f">> {segment_text} "
+                    else:
+                        current_block += f"{segment_text} "
+                    total_duration += segment_duration
+                else:
+                    # Write the current block to file
+                    txt_file.write(
+                        f"{format_txt_timestamp(start_time)}\n{current_block.strip()}\n\n"
+                    )
+                    # Update start time for the next block
+                    start_time = segment["words"][0]["start"]
+                    # Start a new block
+                    total_duration = segment_duration
+                    current_block = f"{segment_text} "
+            # Write the remaining block if any
+            if current_block:
+                txt_file.write(
+                    f"{format_txt_timestamp(start_time)}\n{current_block.strip()}\n\n"
+                )
 
 
 # ...
