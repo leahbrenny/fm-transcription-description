@@ -410,10 +410,10 @@ def test_format_txt(json_data):
 @app.route("/generate_descriptions", methods=["POST"])
 def generate_descriptions():
     try:
-        with open('run.env', 'r') as file:
+        with open("run.env", "r") as file:
             for line in file:
-                if '=' in line:
-                    key, value = line.strip().split('=', 1)
+                if "=" in line:
+                    key, value = line.strip().split("=", 1)
                     os.environ[key] = value
 
         # Set OpenAI API key
@@ -423,24 +423,12 @@ def generate_descriptions():
         response_descriptions = []
 
         for filename in os.listdir(temp_directory):
-            if filename.endswith(".vtt"):  # Check for .vtt files
-                # Extract the file name without extension
-                file_name_without_extension = os.path.splitext(filename)[0]
+            if filename.endswith(".txt"):  # Check for .txt files
+                txt_file_path = os.path.join(temp_directory, filename)
+                with open(txt_file_path, "r") as txt_file:
+                    txt_content = txt_file.read()
 
-                vtt_file_path = os.path.join(temp_directory, filename)
-                with open(vtt_file_path, "r") as vtt_file:
-                    vtt_content = vtt_file.read()
-
-                # Use regular expressions to extract relevant information
-                pattern = re.compile(
-                    r"(\d+)\n(\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}\.\d{3})\n(.*?)(?=\d+\n\d{2}:\d{2}\.\d{3} -->|\Z)",
-                    re.DOTALL,
-                )
-                matches = pattern.findall(vtt_content)
-
-                timestamps_removed = ""
-                for match in matches:
-                    timestamps_removed += f"{match[0]}\n{match[1]}\n{match[2]}\n\n"
+                print(txt_content)
 
                 # Combine the entire text into a single message
                 response = openai.ChatCompletion.create(
@@ -450,7 +438,7 @@ def generate_descriptions():
                             "role": "system",
                             "content": "Provide a 2 to 3 sentence description of what happens in the lesson you are provided",
                         },
-                        {"role": "user", "content": timestamps_removed},
+                        {"role": "user", "content": txt_content},
                     ],
                     temperature=0,
                     max_tokens=1024,
@@ -465,9 +453,7 @@ def generate_descriptions():
                 )
 
                 # Append the "lesson_name\tlesson_description" to the response_descriptions list
-                response_descriptions.append(
-                    f"{file_name_without_extension}\\t{description}"
-                )
+                response_descriptions.append(f"{filename}\\t{description}")
 
         # Join the descriptions into a single string with HTML non-breaking spaces and return it
         return "<br>".join(response_descriptions)
