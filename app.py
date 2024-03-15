@@ -339,6 +339,7 @@ def test_format_vtt(json_data):
 
             # Initialize block number
             block_number = 1
+            vtt_block = ""
 
             # Iterate through each segment
             for segment in segments:
@@ -409,8 +410,11 @@ def test_format_txt(json_data):
 @app.route("/generate_descriptions", methods=["POST"])
 def generate_descriptions():
     try:
-        # Load environment variables from .env
-        load_dotenv()
+        with open('run.env', 'r') as file:
+            for line in file:
+                if '=' in line:
+                    key, value = line.strip().split('=', 1)
+                    os.environ[key] = value
 
         # Set OpenAI API key
         openai.api_key = os.getenv("OPENAI_API_KEY")

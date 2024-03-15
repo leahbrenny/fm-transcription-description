@@ -15,7 +15,7 @@ venv/
 .vscode/
 
 .DS_Store
-.env
+run.env
 temp
 transcriptions.zip
 last
